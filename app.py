@@ -3,12 +3,12 @@ import pickle
 import pandas as pd
 import numpy as np
 
-# 1. Saved model, scaler, aur columns load karein
+# 1. Load the saved model, scaler, and training column structure
 model = pickle.load(open('ipl_model.pkl', 'rb'))
 scaler = pickle.load(open('ipl_scaler.pkl', 'rb'))
 model_columns = pickle.load(open('ipl_columns.pkl', 'rb'))
 
-# Teams aur Cities ki list
+# List of active IPL teams and host cities
 teams = [
     'Sunrisers Hyderabad', 'Mumbai Indians', 'Royal Challengers Bengaluru',
     'Kolkata Knight Riders', 'Punjab Kings', 'Chennai Super Kings',
@@ -24,9 +24,9 @@ cities = [
     'UAE', 'Rajkot', 'Kanpur', 'Mohali', 'Guwahati', 'Lucknow'
 ]
 
-# 2. App ka Title aur Layout
+# 2. Configure the Streamlit web application title and user inputs
 st.title('🏏 IPL Live Win Probability Predictor')
-st.write('2nd Innings ke live match details daalein aur jeetne ke chances dekhein!')
+st.write('Enter live second-innings match details to predict real-time win probabilities.')
 
 col1, col2 = st.columns(2)
 with col1:
@@ -45,19 +45,19 @@ with col4:
 with col5:
     wickets = st.number_input('Wickets Fallen', min_value=0, max_value=10, value=2)
 
-# 3. Prediction Button
+# 3. Calculate match features and generate win probability on button click
 if st.button('Predict Win Probability'):
     if batting_team == bowling_team:
-        st.error('Batting aur Bowling team alag-alag honi chahiye!')
+        st.error('Batting and Bowling teams must be different!')
     else:
-        # Live features calculate karein
+        # Feature engineering for live match state
         runs_left = target - score
         balls_left = 120 - int(overs * 6)
         wickets_left = 10 - wickets
         crr = (score * 6) / (120 - balls_left) if (120 - balls_left) > 0 else 0
         rrr = (runs_left * 6) / balls_left if balls_left > 0 else 0
 
-        # Input data ko ek row ke DataFrame me dalein
+        # Create a single-row DataFrame matching training features
         input_df = pd.DataFrame({
             'batting_team': [batting_team],
             'bowling_team': [bowling_team],
@@ -70,18 +70,18 @@ if st.button('Predict Win Probability'):
             'rrr': [rrr]
         })
 
-        # Encoding aur column alignment (exact training format jaisa)
+        # Apply One-Hot Encoding and align columns with training data
         input_encoded = pd.get_dummies(input_df, columns=['batting_team', 'bowling_team', 'city'])
         input_encoded = input_encoded.reindex(columns=model_columns, fill_value=0)
 
-        # Data scale karein aur probability nikalein
+        # Scale features and predict probabilities
         input_scaled = scaler.transform(input_encoded)
         result = model.predict_proba(input_scaled)
 
         loss_prob = result[0][0]
         win_prob = result[0][1]
 
-        # Result display karein
-        st.subheader('Match Win Probability:')
+        # Display predicted probabilities
+        st.subheader('Predicted Match Win Probability:')
         st.success(f"**{batting_team}:** {round(win_prob * 100, 2)}%")
         st.info(f"**{bowling_team}:** {round(loss_prob * 100, 2)}%")
